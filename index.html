@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hôm Nay Ăn Gì?</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            padding: 20px 10px;
+            margin: 0;
+        }
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            max-width: 480px;
+            width: 100%;
+        }
+        h2 { color: #e74c3c; text-align: center; margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        label { font-weight: 600; display: block; margin-bottom: 6px; color: #333; }
+        select, input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            box-sizing: border-box;
+            outline: none;
+        }
+        select:focus, input[type="text"]:focus { border-color: #e74c3c; }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        button:hover { background: #c0392b; }
+        .result-box {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff;
+            border: 1px solid #ffe0e0;
+            border-radius: 12px;
+            display: none;
+            text-align: center;
+        }
+        .food-img {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin: 12px 0;
+        }
+        .map-btn {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 12px 20px;
+            background: #ea4335;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+        .map-btn:hover { background: #c0392b; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>🍽️ Hôm Nay Ăn Gì?</h2>
+    
+    <div class="form-group">
+        <label for="bua">1. Chọn bữa ăn:</label>
+        <select id="bua">
+            <option value="sang">🌅 Bữa Sáng</option>
+            <option value="trua">☀️ Bữa Trưa</option>
+            <option value="chieu">☕ Bữa Chiều (Ăn vặt)</option>
+            <option value="toi">🌙 Bữa Tối</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="ngan_sach">2. Nhập ngân sách:</label>
+        <input type="text" id="ngan_sach" placeholder="VD: 15k, 40k, 100k, 1tr...">
+    </div>
+
+    <div class="form-group">
+        <label for="khu_vuc">3. Nhập khu vực / địa điểm của bạn:</label>
+        <input type="text" id="khu_vuc" placeholder="VD: Cầu Giấy, Quận 1, Đà Nẵng, Bình Thạnh...">
+    </div>
+
+    <button onclick="timMonAn()">Tìm Món & Chỉ Đường Quán Ăn</button>
+
+    <div class="result-box" id="result"></div>
+</div>
+
+<script>
+function docSoTien(text) {
+    if (!text) return 0;
+    let str = text.toString().toLowerCase().trim().replace(/,/g, '.');
+    let heSo = 1;
+    if (str.includes('k') || str.includes('nghìn') || str.includes('nghin')) {
+        heSo = 1000;
+        str = str.replace(/k|nghìn|nghin/g, '');
+    } else if (str.includes('tr') || str.includes('triệu') || str.includes('trieu')) {
+        heSo = 1000000;
+        str = str.replace(/tr|triệu|trieu/g, '');
+    }
+    let so = parseFloat(str);
+    return isNaN(so) ? 0 : so * heSo;
+}
+
+const MON_AN = {
+    sang: [
+        { gia: 20000, ten: "Bánh Mì Kẹp Thịt", anh: "https://images.unsplash.com/photo-1626844131082-256783844137?w=500", tukhoa: "banh mi" },
+        { gia: 60000, ten: "Phở Bò Gia Truyền", anh: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500", tukhoa: "pho bo ngon" },
+        { gia: Infinity, ten: "Buffet Sáng Khách Sạn Cao Cấp", anh: "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=500", tukhoa: "buffet sang khach san" }
+    ],
+    trua: [
+        { gia: 40000, ten: "Cơm Tấm Sườn Nướng", anh: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500", tukhoa: "com tam" },
+        { gia: 150000, ten: "Set Cơm Nhật Bento", anh: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=500", tukhoa: "nha hang nhat ban" },
+        { gia: Infinity, ten: "Steak Bò Wagyu Thượng Hạng", anh: "https://images.unsplash.com/photo-1544025162-d76694265947?w=500", tukhoa: "nha hang steak" }
+    ],
+    chieu: [
+        { gia: 30000, ten: "Trà Sữa & Bánh Tráng Trộn", anh: "https://images.unsplash.com/photo-1558857563-b371033873b8?w=500", tukhoa: "quan tra sua" },
+        { gia: Infinity, ten: "Tiệc Trà Chiều Kiểu Anh", anh: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=500", tukhoa: "tiem tra chieu" }
+    ],
+    toi: [
+        { gia: 80000, ten: "Bún Đậu Mắm Tôm Đầy Đủ", anh: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500", tukhoa: "bun dau mam tom" },
+        { gia: 500000, ten: "Lẩu Nướng BBQ Hàn Quốc", anh: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500", tukhoa: "quan lau nuong bbq" },
+        { gia: Infinity, ten: "Buffet Tôm Hùm & Hải Sản", anh: "https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?w=500", tukhoa: "buffet hai san" }
+    ]
+};
+
+function timMonAn() {
+    let bua = document.getElementById('bua').value;
+    let inputMoney = document.getElementById('ngan_sach').value;
+    let khuVuc = document.getElementById('khu_vuc').value.trim();
+    let resultDiv = document.getElementById('result');
+
+    let soTien = docSoTien(inputMoney);
+
+    if (soTien < 1000) {
+        resultDiv.style.display = "block";
+        resultDiv.innerHTML = "<b style='color:#c0392b;'>Vui lòng nhập ngân sách hợp lệ (từ 1k)!</b>";
+        return;
+    }
+
+    let danhSach = MON_AN[bua];
+    let monChon = danhSach[danhSach.length - 1];
+
+    for (let i = 0; i < danhSach.length; i++) {
+        if (soTien <= danhSach[i].gia) {
+            monChon = danhSach[i];
+            break;
+        }
+    }
+
+    let mapQuery = encodeURIComponent(`${monChon.tukhoa} ${khuVuc}`);
+    let mapUrl = `https://www.google.com/maps/search/${mapQuery}`;
+    let hienThiKhuVuc = khuVuc ? `tại <b>${khuVuc}</b>` : "gần bạn";
+
+    resultDiv.style.display = "block";
+    resultDiv.innerHTML = `
+        <h3 style="color:#2c3e50; margin:5px 0;">Gợi ý: ${monChon.ten}</h3>
+        <p style="color:#7f8c8d; margin:5px 0;">Ngân sách: ${soTien.toLocaleString('vi-VN')} VNĐ</p>
+        <img src="${monChon.anh}" class="food-img" alt="${monChon.ten}">
+        <br>
+        <a href="${mapUrl}" target="_blank" class="map-btn">📍 Xem Danh Sách Quán ${monChon.ten} ${hienThiKhuVuc}</a>
+    `;
+}
+</script>
+
+</body>
+</html>
